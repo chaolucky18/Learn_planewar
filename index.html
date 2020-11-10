@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1902程俊超</title>
+    <style>
+        body {padding: 0; margin: 0;}
+        .border {
+            border: 1px solid red;
+        }
+        .shadow {
+            box-shadow: 0 0 20px 5px rgb(134 134 134);
+        }
+        .gamebox {
+            width: 480px;
+            height: 850px;
+            cursor: none;
+            margin: 20px auto 0;
+            /* zoom: 0.7 */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="gamebox shadow">
+        <canvas id="game" width="480" height="850"></canvas>
+    </div>
+
+    <script src="./js/background.js"></script>
+    <script src="./js/hero.js"></script>
+    <script>
+        let obj = document.getElementById('game')
+        let gameCtx = obj.getContext('2d')
+
+        // gameCtx.fillText("哈哈哈哈", 100, 100)
+        let res = [
+            './img/background.png',
+            './img/hero1.png',
+            './img/hero2.png',
+            './img/enemy0.png'
+        ]
+        let resObj = [] //保存已经加载好的图片对象
+        let loadCount = 0; //已经加载图片的数量
+        // let heroImg = new Image()
+        // heroImg.src = './img/hero3.png'
+        // heroImg.onload = () => gameCtx.drawImage(heroImg, 100, 500)
+        
+        for ( let i = 0; i < res.length; i++){
+            let img = new Image()
+            img.src = res[i]
+            resObj.push(img)
+            img.onload = () => {
+                loadCount++
+                if(loadCount == res.length) startGame()
+            }
+        }
+
+        let bg = null
+        let hero = null
+        let startGame = () => {
+            bg = new Background()
+            hero = new Hero()
+            setInterval(rePaint, 30)
+            obj.onmousemove = e => {
+                hero.x = e.offsetX >= (480 - hero.width) ? (480 - hero.width) : e.offsetX
+                hero.y = e.offsetY >= (850 - hero.height) ? (850 - hero.height) : e.offsetY
+                // hero.x = e.x - obj.getBoundingClientRect().left
+                // hero.y = e.y - obj.getBoundingClientRect().top
+            }
+            obj.onmousedown = e => {console.log(e)}
+        }
+
+        let rePaint = () => {
+            bg.draw(gameCtx)
+            hero.draw(gameCtx)
+        }
+    </script>
+</body>
+
+</html>
