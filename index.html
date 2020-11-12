@@ -1,17 +1,24 @@
 <!DOCTYPE html>
 <html lang="cn">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>1902程俊超</title>
     <style>
-        body {padding: 0; margin: 0;}
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
         .border {
             border: 1px solid red;
         }
+
         .shadow {
             box-shadow: 0 0 20px 5px rgb(134 134 134);
         }
+
         .gamebox {
             width: 480px;
             height: 850px;
@@ -27,8 +34,10 @@
         <canvas id="game" width="480" height="850"></canvas>
     </div>
 
-    <script src="./js/background.js"></script>
-    <script src="./js/hero.js"></script>
+    <script src="./js/Background.js"></script>
+    <script src="./js/Hero.js"></script>
+    <script src="./js/Bullet.js"></script>
+    <script src="./js/Enemy.js"></script>
     <script>
         let obj = document.getElementById('game')
         let gameCtx = obj.getContext('2d')
@@ -38,43 +47,151 @@
             './img/background.png',
             './img/hero1.png',
             './img/hero2.png',
-            './img/enemy0.png'
+            './img/bullet1.png',
+            './img/enemy0.png',
+            './img/enemy1.png',
+            './img/enemy2.png',
+            './img/enemy1_hit.png',
+            './img/enemy2_hit.png',
         ]
         let resObj = [] //保存已经加载好的图片对象
         let loadCount = 0; //已经加载图片的数量
         // let heroImg = new Image()
         // heroImg.src = './img/hero3.png'
         // heroImg.onload = () => gameCtx.drawImage(heroImg, 100, 500)
-        
-        for ( let i = 0; i < res.length; i++){
+
+        for (let i = 0; i < res.length; i++) {
             let img = new Image()
             img.src = res[i]
             resObj.push(img)
             img.onload = () => {
                 loadCount++
-                if(loadCount == res.length) startGame()
+                if (loadCount == res.length) startGame()
             }
         }
 
         let bg = null
         let hero = null
+        let bulletList = []
+        let enemyList = []
+
         let startGame = () => {
             bg = new Background()
             hero = new Hero()
-            setInterval(rePaint, 30)
+            // 开火子弹循环
+            fire()
+            // 循环重绘
+            window.s = setInterval(rePaint, 30)
+            // 玩家移动
             obj.onmousemove = e => {
                 hero.x = e.offsetX >= (480 - hero.width) ? (480 - hero.width) : e.offsetX
                 hero.y = e.offsetY >= (850 - hero.height) ? (850 - hero.height) : e.offsetY
                 // hero.x = e.x - obj.getBoundingClientRect().left
                 // hero.y = e.y - obj.getBoundingClientRect().top
             }
-            obj.onmousedown = e => {console.log(e)}
+            obj.onmousedown = e => { console.log(e) }
         }
 
+        /**
+         * 重绘(定时循环执行函数)
+         */
         let rePaint = () => {
+            // 画背景
             bg.draw(gameCtx)
+            // 画玩家
             hero.draw(gameCtx)
+            // 画敌人
+            addEnemy()
+            // 子弹碰撞检测
+            checkBulletAndEnemyCrash()
+            // 画子弹
+            for (let i = 0; i < bulletList.length; i++) {
+                // 移动子弹
+                // bulletList[i].y -= 20
+                // 数组长度控制
+                // if(bulletList[i].y < 0) bulletList.splice(i, 1)
+                // 快速移动出画布导致报错异常处理
+                try { bulletList[i].draw(gameCtx) } catch (e) { }
+            }
+            // 画敌机
+            for (let i = 0; i < enemyList.length; i++) {
+                enemyList[i].draw(gameCtx)
+            }
         }
+
+        /**
+         * 开火（子弹生成）
+         */
+        let fire = () => {
+            let t = 1000 / 7    // 每秒发射几颗子弹
+            window.sb = setInterval(() => {
+                if (hero.isDoubleBuff) {
+                    let b_left = new Bullet(hero.x + hero.width / 4, hero.y)
+                    let b_right = new Bullet(hero.x + (hero.width / 4 * 3), hero.y)
+                    let b = new Bullet(hero.x + (hero.width / 2), hero.y - (hero.height / 8))
+                    bulletList.push(b)
+                    bulletList.push(b_left)
+                    bulletList.push(b_right)
+                } else {
+                    let b = new Bullet(hero.x + (hero.width / 2), hero.y - (hero.height / 8))
+                    bulletList.push(b)
+                }
+            }, t);
+        }
+
+        /**
+         * 添加敌人（循环函数）
+         */
+        let addEnemy = () => {
+            const enemyNum = 10
+            if (enemyList.length < enemyNum) {
+                let count = enemyNum - enemyList.length
+                for (let i = 0; i < count; i++) {
+                    let e = new Enemy()
+                    enemyList.push(e)
+                }
+            }
+        }
+
+        /**
+         * 碰撞检测
+         */
+        let checkCrash = (a, b) => {
+            if (b.x + b.width < a.x ||
+                a.x + a.width < b.x ||
+                b.y + b.height < a.y ||
+                a.y + a.height < b.y) {
+                //满足任何一种，都说明没有发生碰撞
+                return false
+            } else {
+                //发生了碰撞
+                return true
+            }
+        }
+
+        /**
+         * 检测是否碰撞
+         */
+        let checkBulletAndEnemyCrash = () => {
+            for (let i = bulletList.length - 1; i >= 0 ; i--) {
+                for (let j = enemyList.length - 1; j >= 0; j--) {
+                    // 子弹是a，敌机是b
+                    let a = bulletList[i]
+                    let b = enemyList[j]
+                    // 检测碰撞,碰撞则执行
+                    if(checkCrash(a, b)) {
+                        bulletList.splice(i, 1)
+                        // 敌机血量减一
+                        enemyList[j].hp -= 1;
+                        // 检测是否血量为0
+                        b.isDie()
+
+                        break;
+                    }
+                }
+            }
+        }
+
     </script>
 </body>
 

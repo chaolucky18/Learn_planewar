@@ -9,6 +9,7 @@ class Hero {
         this.imgIndex = 0
         this.width = this.img.width / 2
         this.height = this.img.height / 2
+        this.isDoubleBuff = false
     }
 
     /**
