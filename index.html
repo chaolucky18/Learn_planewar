@@ -4,11 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="./img/icon72x72.png" type="image/x-icon">
     <title>1902程俊超</title>
     <style>
         body {
             padding: 0;
             margin: 0;
+            background-image: url('./img/bg.png');
         }
 
         .border {
@@ -16,15 +18,35 @@
         }
 
         .shadow {
-            box-shadow: 0 0 20px 5px rgb(134 134 134);
+            /* box-shadow: 0 0 20px 5px rgb(134 134 134); */
         }
 
         .gamebox {
             width: 480px;
             height: 850px;
-            cursor: none;
+            cursor: auto;
             margin: 20px auto 0;
+            position: relative;
             /* zoom: 0.7 */
+        }
+
+        #btn_start {
+            position: absolute;
+            top: 70%;
+            left: 50%;
+            width: 260px;
+            height: 50px;
+            background-color: #eee;
+            border: none;
+            transform: translate(-50%, -50%);
+            border-radius: 5px;
+            font-size: 16px;
+            transition: 400ms ease all;
+            cursor: pointer;
+        }
+
+        #btn_start:hover {
+            background-color: #dad9d9;
         }
     </style>
 </head>
@@ -32,13 +54,20 @@
 <body>
     <div class="gamebox shadow">
         <canvas id="game" width="480" height="850"></canvas>
+        <button type="button" id="btn_start">开始游戏</button>
     </div>
+    <audio src="./img/game_music.mp3" loop></audio>
 
     <script src="./js/Background.js"></script>
     <script src="./js/Hero.js"></script>
     <script src="./js/Bullet.js"></script>
     <script src="./js/Enemy.js"></script>
+    <script src="./js/Boom.js"></script>
+    <script src="./js/Prop1.js"></script>
+    <script src="./js/Prop2.js"></script>
     <script>
+        let btn = document.querySelector('#btn_start')
+        let bgm = document.querySelector('audio')
         let obj = document.getElementById('game')
         let gameCtx = obj.getContext('2d')
 
@@ -53,6 +82,30 @@
             './img/enemy2.png',
             './img/enemy1_hit.png',
             './img/enemy2_hit.png',
+            './img/enemy0_down1.png',
+            './img/enemy0_down2.png',
+            './img/enemy0_down3.png',
+            './img/enemy0_down4.png',
+            './img/enemy1_down1.png',
+            './img/enemy1_down2.png',
+            './img/enemy1_down3.png',
+            './img/enemy1_down4.png',
+            './img/enemy2_down1.png',
+            './img/enemy2_down2.png',
+            './img/enemy2_down3.png',
+            './img/enemy2_down4.png',
+            './img/enemy2_down5.png',
+            './img/enemy2_down6.png',
+            './img/prop_type_0.png',
+            './img/prop_type_1.png',
+            './img/hero_blowup_n1.png',
+            './img/hero_blowup_n2.png',
+            './img/hero_blowup_n3.png',
+            './img/hero_blowup_n4.png',
+            './img/bg1.jpg',
+            './img/bg2.jpg',
+            './img/bg3.jpg',
+            './img/bg4.jpg',
         ]
         let resObj = [] //保存已经加载好的图片对象
         let loadCount = 0; //已经加载图片的数量
@@ -60,28 +113,47 @@
         // heroImg.src = './img/hero3.png'
         // heroImg.onload = () => gameCtx.drawImage(heroImg, 100, 500)
 
+        // 加载资源
         for (let i = 0; i < res.length; i++) {
             let img = new Image()
             img.src = res[i]
             resObj.push(img)
             img.onload = () => {
                 loadCount++
-                if (loadCount == res.length) startGame()
+                if (loadCount == res.length) {
+                    // 资源加载完成
+                    let bg = new Background()
+                    bg.draw(gameCtx)
+                }
             }
         }
 
+        btn.onclick = (e) => {
+            startGame()
+            btn.remove()
+        }
+
+        let gameTimerId = null
+        let fireTimerId = null
         let bg = null
         let hero = null
         let bulletList = []
         let enemyList = []
+        let score = 0
+        let boomList = []
+        let prop1List = []
+        let prop2List = []
+        let killall = false
 
-        let startGame = () => {
+        let startGame = (x, y) => {
+            obj.style.cursor = 'none'
+            bgm.play()
             bg = new Background()
-            hero = new Hero()
+            hero = new Hero(x, y)
             // 开火子弹循环
             fire()
             // 循环重绘
-            window.s = setInterval(rePaint, 30)
+            gameTimerId = setInterval(rePaint, 30)
             // 玩家移动
             obj.onmousemove = e => {
                 hero.x = e.offsetX >= (480 - hero.width) ? (480 - hero.width) : e.offsetX
@@ -89,7 +161,11 @@
                 // hero.x = e.x - obj.getBoundingClientRect().left
                 // hero.y = e.y - obj.getBoundingClientRect().top
             }
-            obj.onmousedown = e => { console.log(e) }
+            obj.onmousedown = e => {
+                // console.log(e)
+                document.onmousemove = a => {
+                }
+            }
         }
 
         /**
@@ -104,6 +180,13 @@
             addEnemy()
             // 子弹碰撞检测
             checkBulletAndEnemyCrash()
+            // 添加道具1
+            addProp1()
+            // 道具碰撞检测
+            checkHeroAndProp1()
+            checkHeroAndProp2()
+            // 检测玩家是否触碰到敌机
+            heroIsDie()
             // 画子弹
             for (let i = 0; i < bulletList.length; i++) {
                 // 移动子弹
@@ -117,14 +200,47 @@
             for (let i = 0; i < enemyList.length; i++) {
                 enemyList[i].draw(gameCtx)
             }
+
+            gameCtx.font = '25px 等线'
+            gameCtx.fillText('得分: ' + score, 20, 50)
+
+            // 绘画爆炸效果，倒序遍历，防止沙漏效应
+            for (let i = boomList.length - 1; i >= 0; i--) {
+                boomList[i].draw(gameCtx)
+            }
+            // 画道具
+            for (let i = prop1List.length - 1; i >= 0; i--) {
+                prop1List[i].draw(gameCtx)
+            }
+
+            for (let i = prop2List.length - 1; i >= 0; i--) {
+                prop2List[i].draw(gameCtx)
+            }
         }
 
         /**
          * 开火（子弹生成）
          */
         let fire = () => {
-            let t = 1000 / 7    // 每秒发射几颗子弹
-            window.sb = setInterval(() => {
+            let t = 1000 / 5   // 每秒发射几颗子弹
+            let audioList = []
+            let index = 0 // 音频播放当前的线程
+            let thread = 5 // 线程数量：为了播放效率，使用多个“线程”
+
+            for (let i = 0; i < thread; i++) {
+                let d = document.getElementsByTagName('body')[0]
+                let audio = document.createElement('audio')
+                audio.src = './img/bullet.mp3'
+                d.appendChild(audio)
+                audioList.push(audio)
+            }
+
+            fireTimerId = setInterval(() => {
+                // 这个索引从0~3在循环
+                audioList[index].play()
+                index++
+                index = index >= thread ? 0 : index
+
                 if (hero.isDoubleBuff) {
                     let b_left = new Bullet(hero.x + hero.width / 4, hero.y)
                     let b_right = new Bullet(hero.x + (hero.width / 4 * 3), hero.y)
@@ -144,7 +260,7 @@
          */
         let addEnemy = () => {
             const enemyNum = 10
-            if (enemyList.length < enemyNum) {
+            if (enemyList.length < enemyNum && killall != true) {
                 let count = enemyNum - enemyList.length
                 for (let i = 0; i < count; i++) {
                     let e = new Enemy()
@@ -173,13 +289,13 @@
          * 检测是否碰撞
          */
         let checkBulletAndEnemyCrash = () => {
-            for (let i = bulletList.length - 1; i >= 0 ; i--) {
+            for (let i = bulletList.length - 1; i >= 0; i--) {
                 for (let j = enemyList.length - 1; j >= 0; j--) {
                     // 子弹是a，敌机是b
                     let a = bulletList[i]
                     let b = enemyList[j]
                     // 检测碰撞,碰撞则执行
-                    if(checkCrash(a, b)) {
+                    if (checkCrash(a, b)) {
                         bulletList.splice(i, 1)
                         // 敌机血量减一
                         enemyList[j].hp -= 1;
@@ -188,6 +304,85 @@
 
                         break;
                     }
+                }
+            }
+        }
+
+        /**
+         * 生成双排子弹道具
+         */
+        let addProp1 = () => {
+            let temp = parseInt(Math.random() * 2000)
+            if (temp < 5) {
+                let typeTemp = parseInt(Math.random() * 2)
+                if (typeTemp == 0) {
+                    // 双排子弹道具
+                    let p1 = new Prop1()
+                    prop1List.push(p1)
+                }
+                else {
+                    // 全屏爆炸效果
+                    let p2 = new Prop2()
+                    prop2List.push(p2)
+                }
+            }
+        }
+
+        /**
+         * 检测玩家是否捡到生成子弹道具
+         */
+        let checkHeroAndProp1 = () => {
+            for (let i = prop1List.length - 1; i >= 0; i--) {
+                let p1 = prop1List[i]
+                // 碰撞检测
+                if (checkCrash(hero, p1)) {
+                    // 删除当前道具
+                    prop1List.splice(i, 1)
+                    // 多子弹buff修改
+                    hero.isDoubleBuff = true
+                    // n秒之后恢复
+                    setTimeout(() => {
+                        hero.isDoubleBuff = false
+                    }, 10000)
+                }
+            }
+        }
+
+        let checkHeroAndProp2 = () => {
+            for (let i = prop2List.length - 1; i >= 0; i--) {
+                let p1 = prop2List[i]
+                // 碰撞检测
+                if (checkCrash(hero, p1)) {
+                    // 删除当前道具
+                    prop2List.splice(i, 1)
+                    for (let i = enemyList.length - 1; i >= 0; i--) {
+                        // 所有敌机血量至零
+                        enemyList[i].hp = 0
+                        // 爆炸动画
+                        enemyList[i].isDie()
+                        // 暂缓生成敌机
+                        killall = true
+                        setTimeout(() => {
+                            killall = false
+                        }, 3000)
+                    }
+                }
+            }
+        }
+
+        let heroIsDie = () => {
+            for (let i = enemyList.length - 1; i >= 0; i--) {
+                if (checkCrash(enemyList[i], hero)) {
+                    console.log('你死了')
+                    // 游戏停止
+                    clearInterval(gameTimerId)
+                    // 子弹停止
+                    clearInterval(fireTimerId)
+                    // BGM停止
+                    bgm.pause()
+                    obj.style.cursor = 'auto'
+                } else {
+                    continue
                 }
             }
         }

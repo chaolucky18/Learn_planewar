@@ -2,9 +2,9 @@
  * 英雄对象
  */
 class Hero {
-    constructor(){
-        this.x = 200
-        this.y = 500
+    constructor(a, b){
+        this.x = a || 220
+        this.y = b || 600
         this.img = resObj[1]
         this.imgIndex = 0
         this.width = this.img.width / 2

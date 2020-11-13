@@ -8,7 +8,7 @@ class Enemy {
         if (temp < 4) {
             // 大
             this.type = 0
-            this.hp = 15
+            this.hp = 20
             this.img = resObj[6]
             this.speed = 1 + parseInt(Math.random() * 2)
         }
@@ -31,7 +31,7 @@ class Enemy {
         this.height = this.img.height
         this.y = 0 - this.height;
         this.x = parseInt(Math.random() * obj.width)
-
+        this.totalLife = this.hp
     }
 
     /**
@@ -43,6 +43,9 @@ class Enemy {
             this.x = obj.width - this.width
         }
         this.move()
+        gameCtx.strokeRect(this.x, this.y - 12, this.width, 4)
+        gameCtx.fillStyle = "black"
+        gameCtx.fillRect(this.x, this.y - 12, this.hp / this.totalLife * this.width, 2)
         gameCtx.drawImage(this.img, this.x, this.y, this.width, this.height)
     }
 
@@ -68,6 +71,32 @@ class Enemy {
             if (index != -1) {
                 enemyList.splice(index, 1)
             }
+            // 根据飞机的类型统计分数
+            switch(this.type) {
+                case 2:
+                    score += 10
+                    break
+                case 1:
+                    score += 30
+                    break
+                case 0:
+                    score += 100
+                    break
+                default:
+                    break
+            }
+            // 爆炸动画
+            let b = new Boom(this.x, this.y, this.type)
+            boomList.push(b)
+            // 爆炸音效
+            let audio = document.createElement('audio')
+            if(this.type == 2 || this.type == 1) {
+                audio.src = './img/enemy0_down.mp3'
+            }
+            else {
+                audio.src = './img/enemy2_down.mp3'
+            }
+            audio.play()
         }
         else {
             // 大飞机
